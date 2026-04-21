@@ -1,6 +1,7 @@
 {
   "name": "mcp-growi",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "mcpName": "io.github.Growi-DeFi/mcp-growi",
   "description": "MCP server for Growi Finance (growi.fi) — programmatic interaction with the GrowiHFVault on Arbitrum",
   "type": "module",
   "main": "dist/index.js",
