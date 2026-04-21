@@ -1,0 +1,54 @@
+{
+  "name": "mcp-growi",
+  "version": "0.1.0",
+  "description": "MCP server for Growi Finance (growi.fi) — programmatic interaction with the GrowiHFVault on Arbitrum",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-growi": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "growi",
+    "defi",
+    "arbitrum",
+    "vault"
+  ],
+  "author": {
+    "name": "Growi Finance",
+    "url": "https://growi.fi"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Growi-DeFi/mcp-growi.git"
+  },
+  "homepage": "https://growi.fi",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "viem": "^2.23.2",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "overrides": {
+    "hono": "^4.12.14"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.7.3"
+  }
+}
