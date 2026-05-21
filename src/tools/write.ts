@@ -2,12 +2,14 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { readFileSync } from "node:fs";
 import { createDecipheriv, scryptSync, pbkdf2Sync } from "node:crypto";
+import { basename } from "node:path";
 import type { VersionStatus } from "./index.js";
 import { depositLock, withdrawLock } from "../locks/lock-period.js";
 import {
   formatUnits,
   parseUnits,
   encodeFunctionData,
+  decodeFunctionData,
   createWalletClient,
   http,
   keccak256,
@@ -35,9 +37,61 @@ const client = createArbitrumClient();
  *  "MCP-GROWI" in hex, zero-padded to 32 bytes. Visible in Arbiscan tx input data. */
 const MCP_CALLDATA_TAG = "4d43502d47524f57490000000000000000000000000000000000000000000000";
 
-/** Selector for GrowiHFVault.deposit(uint256). Used to gate post-tx deposit polling
- *  so an approve-only execution doesn't trigger a 60s "waiting for deposit" wait. */
+const APPROVE_SELECTOR = toFunctionSelector("function approve(address spender, uint256 amount)");
 const DEPOSIT_SELECTOR = toFunctionSelector("function deposit(uint256 amount)");
+const WITHDRAW_SELECTOR = toFunctionSelector("function withdraw(uint256 qty)");
+
+const ALLOWED_PAIRS: Set<string> = new Set([
+  `${USDC_TOKEN_ADDRESS.toLowerCase()}:${APPROVE_SELECTOR.toLowerCase()}`,
+  `${GROWI_HF_VAULT_ADDRESS.toLowerCase()}:${DEPOSIT_SELECTOR.toLowerCase()}`,
+  `${GWHF_TOKEN_ADDRESS.toLowerCase()}:${APPROVE_SELECTOR.toLowerCase()}`,
+  `${GROWI_HF_VAULT_ADDRESS.toLowerCase()}:${WITHDRAW_SELECTOR.toLowerCase()}`,
+]);
+
+function selectorOf(data: Hex): Hex {
+  return data.slice(0, 10).toLowerCase() as Hex;
+}
+
+export function checkAllowlist(to: Address, data: Hex): void {
+  const sel = selectorOf(data);
+  const key = `${to.toLowerCase()}:${sel}`;
+  if (!ALLOWED_PAIRS.has(key)) {
+    throw new Error(
+      `Refusing to sign: (to=${to}, selector=${sel}) is not on the Growi allowlist. ` +
+        `Only USDC.approve, GWHF.approve, vault.deposit, and vault.withdraw are permitted.`,
+    );
+  }
+}
+
+export function decodeAndValidate(data: Hex): void {
+  const sel = selectorOf(data);
+
+  if (sel === APPROVE_SELECTOR.toLowerCase()) {
+    const decoded = decodeFunctionData({ abi: ERC20_ABI, data });
+    if (decoded.functionName !== "approve") {
+      throw new Error(`Decoded function ${decoded.functionName} does not match approve selector.`);
+    }
+    const [spender] = decoded.args as readonly [Address, bigint];
+    if (spender.toLowerCase() !== GROWI_HF_VAULT_ADDRESS.toLowerCase()) {
+      throw new Error(
+        `Refusing to sign: approve spender is ${spender}, expected ${GROWI_HF_VAULT_ADDRESS}. ` +
+          `Only approvals to the GrowiHFVault are permitted.`,
+      );
+    }
+    return;
+  }
+
+  if (sel === DEPOSIT_SELECTOR.toLowerCase() || sel === WITHDRAW_SELECTOR.toLowerCase()) {
+    const decoded = decodeFunctionData({ abi: GROWI_HF_VAULT_ABI, data });
+    const [amount] = decoded.args as readonly [bigint];
+    if (amount === 0n) {
+      throw new Error(`Refusing to sign: ${decoded.functionName} amount must be greater than 0.`);
+    }
+    return;
+  }
+
+  throw new Error(`Internal error: no validator for selector ${sel}.`);
+}
 
 function txListContainsDeposit(txs: { to: string; data: string }[]): boolean {
   const vault = GROWI_HF_VAULT_ADDRESS.toLowerCase();
@@ -120,7 +174,7 @@ export async function loadSigningAccount(): Promise<Account | null> {
           console.error(`[growi-mcp] KEYSTORE_PATH is an encrypted keystore but KEYSTORE_PASSPHRASE is not set — execute_transaction disabled.`);
           return null;
         }
-        console.error(`[growi-mcp] Decrypting keystore from ${keystorePath}...`);
+        console.error(`[growi-mcp] Decrypting keystore from ${basename(keystorePath)}...`);
         const privateKey = decryptEthKeystore(content, passphrase);
         return privateKeyToAccount(privateKey);
       }
@@ -132,7 +186,7 @@ export async function loadSigningAccount(): Promise<Account | null> {
       }
       return privateKeyToAccount(content.privateKey as Hex);
     } catch (e) {
-      console.error(`[growi-mcp] Failed to load keystore from ${keystorePath}:`, e instanceof Error ? e.message : e);
+      console.error(`[growi-mcp] Failed to load keystore from ${basename(keystorePath)}:`, e instanceof Error ? e.message : e);
       return null;
     }
   }
@@ -206,7 +260,7 @@ export function registerWriteTools(server: McpServer, signingAccount: Account | 
     "prepare_deposit",
     "Prepare unsigned transactions to deposit USDC into the GrowiHFVault. Returns approve + deposit calldata ready to sign externally. The server does NOT handle private keys.",
     {
-      amount_usdc: z.string().describe("Amount of USDC to deposit (e.g. '100.5')"),
+      amount_usdc: z.string().describe("Amount of USDC to deposit, as a whole-number string (e.g. '100'). Decimals are not allowed."),
       wallet: z.string().describe("Depositor wallet address"),
     },
     async ({ amount_usdc, wallet }) => {
@@ -216,12 +270,10 @@ export function registerWriteTools(server: McpServer, signingAccount: Account | 
       try {
         const address = validateAddress(wallet);
 
-        let qty: bigint;
-        try {
-          qty = parseUnits(amount_usdc, 6);
-        } catch {
-          return errorResponse(`Invalid USDC amount: "${amount_usdc}". Use a decimal string like "100.5".`);
+        if (!/^\d+$/.test(amount_usdc)) {
+          return errorResponse(`Invalid USDC amount: "${amount_usdc}". Use a whole-number string like "100" — decimals are not allowed.`);
         }
+        const qty = parseUnits(amount_usdc, 6);
 
         if (qty < parseUnits("5", 6)) {
           return errorResponse("Minimum deposit is 5 USDC (enforced by the contract).");
@@ -316,7 +368,7 @@ export function registerWriteTools(server: McpServer, signingAccount: Account | 
     "prepare_withdraw",
     "Prepare unsigned transactions to withdraw GWHF from the GrowiHFVault. Returns approve + withdraw calldata ready to sign externally. The server does NOT handle private keys.",
     {
-      amount_gwhf: z.string().describe("Amount of GWHF to withdraw (e.g. '50.0')"),
+      amount_gwhf: z.string().describe("Amount of GWHF to withdraw, as a whole-number string (e.g. '50'). Decimals are not allowed."),
       wallet: z.string().describe("Withdrawer wallet address"),
     },
     async ({ amount_gwhf, wallet }) => {
@@ -326,12 +378,10 @@ export function registerWriteTools(server: McpServer, signingAccount: Account | 
       try {
         const address = validateAddress(wallet);
 
-        let qty: bigint;
-        try {
-          qty = parseUnits(amount_gwhf, 18);
-        } catch {
-          return errorResponse(`Invalid GWHF amount: "${amount_gwhf}". Use a decimal string like "50.0".`);
+        if (!/^\d+$/.test(amount_gwhf)) {
+          return errorResponse(`Invalid GWHF amount: "${amount_gwhf}". Use a whole-number string like "50" — decimals are not allowed.`);
         }
+        const qty = parseUnits(amount_gwhf, 18);
 
         if (qty === 0n) {
           return errorResponse("Withdrawal amount must be greater than 0.");
@@ -448,7 +498,12 @@ export function registerWriteTools(server: McpServer, signingAccount: Account | 
 
           for (const tx of transactions) {
             const toAddr = validateAddress(tx.to);
-            const taggedData = `${tx.data}${MCP_CALLDATA_TAG}` as Hex;
+            const data = tx.data as Hex;
+
+            checkAllowlist(toAddr, data);
+            decodeAndValidate(data);
+
+            const taggedData = `${data}${MCP_CALLDATA_TAG}` as Hex;
 
             // Simulate via eth_call before signing — catches reverts without spending gas
             try {

@@ -8,7 +8,7 @@ import type { Account } from "viem";
 import { registerTools, type VersionStatus } from "./tools/index.js";
 import { loadSigningAccount } from "./tools/write.js";
 
-// ── Version check against npm registry ──────────────────────────────────────
+// Version check against npm registry
 
 function getLocalVersion(): string {
   try {
@@ -25,7 +25,7 @@ function getLocalVersion(): string {
 async function checkVersion(localVersion: string): Promise<VersionStatus> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
     const res = await fetch("https://registry.npmjs.org/mcp-growi/latest", {
       signal: controller.signal,
@@ -33,15 +33,24 @@ async function checkVersion(localVersion: string): Promise<VersionStatus> {
     clearTimeout(timeout);
 
     if (!res.ok) {
-      // Package not yet published or registry error — don't block
-      return { outdated: false, localVersion, latestVersion: null, message: null };
+      return {
+        outdated: true,
+        localVersion,
+        latestVersion: null,
+        message: `⚠ Cannot verify MCP version against the npm registry (HTTP ${res.status}). All operations are blocked until verification succeeds. Restart once the registry is reachable, or update with: npm install -g mcp-growi@latest`,
+      };
     }
 
     const data = await res.json() as { version?: string };
     const latestVersion = data.version ?? null;
 
     if (!latestVersion) {
-      return { outdated: false, localVersion, latestVersion: null, message: null };
+      return {
+        outdated: true,
+        localVersion,
+        latestVersion: null,
+        message: `⚠ Cannot verify MCP version: npm registry response is missing the 'version' field. All operations are blocked until verification succeeds.`,
+      };
     }
 
     if (latestVersion !== localVersion) {
@@ -49,15 +58,18 @@ async function checkVersion(localVersion: string): Promise<VersionStatus> {
         outdated: true,
         localVersion,
         latestVersion,
-        message: `⚠ You are running MCP version ${localVersion}, but version ${latestVersion} is required. Write operations are blocked for safety. Update with: npm install -g mcp-growi@latest`,
+        message: `⚠ You are running MCP version ${localVersion}, but the latest published version is ${latestVersion}. All operations are blocked for safety. Update with: npm install -g mcp-growi@latest`,
       };
     }
 
     return { outdated: false, localVersion, latestVersion, message: null };
   } catch {
-    // Network error, offline, timeout — don't block, but warn
-    console.error("[growi-mcp] Could not verify version against npm registry — proceeding without check.");
-    return { outdated: false, localVersion, latestVersion: null, message: null };
+    return {
+      outdated: true,
+      localVersion,
+      latestVersion: null,
+      message: `⚠ Cannot verify MCP version: could not reach the npm registry (network error or timeout). All operations are blocked. Check your internet connection and restart the MCP server.`,
+    };
   }
 }
 
@@ -77,8 +89,8 @@ async function main(): Promise<void> {
     checkVersion(localVersion),
   ]);
 
-  if (versionStatus.outdated) {
-    console.error(`[growi-mcp] ⚠ Version outdated: local ${versionStatus.localVersion} → latest ${versionStatus.latestVersion}. Write operations blocked.`);
+  if (versionStatus.outdated && versionStatus.message) {
+    console.error(`[growi-mcp] ${versionStatus.message}`);
   } else if (versionStatus.latestVersion) {
     console.error(`[growi-mcp] Version ${localVersion} is up to date.`);
   }

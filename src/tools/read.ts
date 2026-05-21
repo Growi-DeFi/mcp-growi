@@ -11,6 +11,7 @@ import {
 } from "../contract/index.js";
 import { GROWI_HF_VAULT_ABI, ERC20_ABI } from "../contract/index.js";
 import { depositLock, withdrawLock } from "../locks/lock-period.js";
+import type { VersionStatus } from "./index.js";
 
 const client = createArbitrumClient();
 
@@ -29,12 +30,23 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export function registerReadTools(server: McpServer): void {
+export function registerReadTools(server: McpServer, versionStatus: VersionStatus): void {
+  // Block read operations if MCP version cannot be verified or is outdated (security: ABI or contract address may have changed)
+  function checkVersionOrBlock(): string | null {
+    if (versionStatus.outdated && versionStatus.message) {
+      return versionStatus.message;
+    }
+    return null;
+  }
+
   server.tool(
     "get_vault_status",
     "Check if GrowiHFVault deposits are currently locked or open. Includes context about the weekly lock/unlock cycle.",
     {},
     async () => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       try {
         const locked = await client.readContract({
           address: GROWI_HF_VAULT_ADDRESS,
@@ -72,6 +84,9 @@ export function registerReadTools(server: McpServer): void {
     "Check if a wallet has a pending deposit in the GrowiHFVault queue.",
     { wallet: z.string().describe("Ethereum address to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -103,6 +118,9 @@ export function registerReadTools(server: McpServer): void {
     "Check if a wallet has a pending withdrawal in the GrowiHFVault queue.",
     { wallet: z.string().describe("Ethereum address to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -134,6 +152,9 @@ export function registerReadTools(server: McpServer): void {
     "Get the USDC balance of a wallet on Arbitrum.",
     { wallet: z.string().describe("Ethereum address to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -159,6 +180,9 @@ export function registerReadTools(server: McpServer): void {
     "Get the ETH balance of a wallet on Arbitrum. ETH is needed to pay gas fees for transactions.",
     { wallet: z.string().describe("Ethereum address to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -179,6 +203,9 @@ export function registerReadTools(server: McpServer): void {
     "Get the GWHF (Growi vault shares) balance of a wallet on Arbitrum.",
     { wallet: z.string().describe("Ethereum address to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -204,6 +231,9 @@ export function registerReadTools(server: McpServer): void {
     "Check how much USDC a wallet has approved for the GrowiHFVault to spend.",
     { wallet: z.string().describe("Ethereum address (token owner) to check") },
     async ({ wallet }) => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       let address: Address;
       try { address = validateAddress(wallet); }
       catch (e) { return errorResponse(errMsg(e)); }
@@ -233,6 +263,9 @@ export function registerReadTools(server: McpServer): void {
     "Calculate the current GWHF token price. Derives it from the leader's equity in the Hyperliquid vault divided by GWHF total supply.",
     {},
     async () => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       try {
         const [totalSupplyRaw, hlResponse] = await Promise.all([
           client.readContract({
@@ -303,6 +336,9 @@ export function registerReadTools(server: McpServer): void {
     "Check the current status of both lock periods: the weekly Arbitrum deposit lock and the 24h Hyperliquid withdrawal lock. Use this when a user asks why they cannot deposit or withdraw right now.",
     {},
     async () => {
+      const versionBlock = checkVersionOrBlock();
+      if (versionBlock) return errorResponse(versionBlock);
+
       try {
         const [depositMsg, withdrawMsg] = await Promise.all([
           depositLock({ vaultAddress: GROWI_HF_VAULT_ADDRESS }),

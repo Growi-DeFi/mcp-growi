@@ -1,24 +1,24 @@
 {
   "name": "mcp-growi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "mcp-growi",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
       "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.12.1",
-        "viem": "^2.23.2",
-        "zod": "^3.25.0 || ^4.0.0"
+        "@modelcontextprotocol/sdk": "1.29.0",
+        "viem": "2.47.17",
+        "zod": "4.3.6"
       },
       "bin": {
         "mcp-growi": "dist/index.js"
       },
       "devDependencies": {
-        "@types/node": "^22.13.10",
-        "typescript": "^5.7.3"
+        "@types/node": "22.19.17",
+        "typescript": "5.9.3"
       },
       "engines": {
         "node": ">=18"
@@ -522,9 +522,9 @@
       "integrity": "sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q=="
     },
     "node_modules/fast-uri": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.0.tgz",
-      "integrity": "sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==",
+      "version": "3.1.2",
+      "resolved": "https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.2.tgz",
+      "integrity": "sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==",
       "funding": [
         {
           "type": "github",
@@ -534,7 +534,8 @@
           "type": "opencollective",
           "url": "https://opencollective.com/fastify"
         }
-      ]
+      ],
+      "license": "BSD-3-Clause"
     },
     "node_modules/finalhandler": {
       "version": "2.1.1",
@@ -649,9 +650,9 @@
       }
     },
     "node_modules/hono": {
-      "version": "4.12.14",
-      "resolved": "https://registry.npmjs.org/hono/-/hono-4.12.14.tgz",
-      "integrity": "sha512-am5zfg3yu6sqn5yjKBNqhnTX7Cv+m00ox+7jbaKkrLMRJ4rAdldd1xPd/JzbBWspqaQv6RSTrgFN95EsfhC+7w==",
+      "version": "4.12.18",
+      "resolved": "https://registry.npmjs.org/hono/-/hono-4.12.18.tgz",
+      "integrity": "sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==",
       "license": "MIT",
       "engines": {
         "node": ">=16.9.0"
@@ -697,9 +698,10 @@
       "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ=="
     },
     "node_modules/ip-address": {
-      "version": "10.1.0",
-      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.1.0.tgz",
-      "integrity": "sha512-XXADHxXmvT9+CRxhXg56LJovE+bmWnEWB78LB83VZTprKTmaC5QfruXocxzTZ2Kl0DNwKuBdlIhjL8LeY8Sf8Q==",
+      "version": "10.2.0",
+      "resolved": "https://registry.npmjs.org/ip-address/-/ip-address-10.2.0.tgz",
+      "integrity": "sha512-/+S6j4E9AHvW9SWMSEY9Xfy66O5PWvVEJ08O0y5JGyEKQpojb0K0GKpz/v5HJ/G0vi3D2sjGK78119oXZeE0qA==",
+      "license": "MIT",
       "engines": {
         "node": ">= 12"
       }
@@ -1241,9 +1243,10 @@
       "integrity": "sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ=="
     },
     "node_modules/ws": {
-      "version": "8.18.3",
-      "resolved": "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz",
-      "integrity": "sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==",
+      "version": "8.20.1",
+      "resolved": "https://registry.npmjs.org/ws/-/ws-8.20.1.tgz",
+      "integrity": "sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==",
+      "license": "MIT",
       "engines": {
         "node": ">=10.0.0"
       },

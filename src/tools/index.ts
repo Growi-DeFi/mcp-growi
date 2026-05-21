@@ -11,6 +11,6 @@ export interface VersionStatus {
 }
 
 export function registerTools(server: McpServer, signingAccount: Account | null, versionStatus: VersionStatus): void {
-  registerReadTools(server);
+  registerReadTools(server, versionStatus);
   registerWriteTools(server, signingAccount, versionStatus);
 }
